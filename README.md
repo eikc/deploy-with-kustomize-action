@@ -1,4 +1,4 @@
-# deploy-with-kustomize-acton
+# deploy-with-kustomize-action
 Simple action to deploy to kubernetes with kustomize
 
 This action is in the early development stages
