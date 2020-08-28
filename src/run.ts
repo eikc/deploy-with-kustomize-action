@@ -15,7 +15,7 @@ async function run() {
         await monitorDeployment()
     }
 
-    await exec.exec("kubectl", ["get", "pods", "-n", "mityousee-staging"])
+    await execHelper("kubectl", ["get", "pods", "-n", "mityousee-staging"])
 }
 
 const setImages = async (registry, imageInputs, overlay) => {
@@ -35,11 +35,11 @@ const deploy = async () => {
     const resourceLocation = `${process.cwd()}/resources.yaml`
 
     await runKustomize(overlay, ["-o", resourceLocation, "build"])
-    await exec.exec("kubectl", ["apply", "-f", resourceLocation])
+    await execHelper("kubectl", ["apply", "-f", resourceLocation])
 }
 
 const runKustomize = async (overlay, args) => {
-    await exec.exec("kustomize", args, {
+    await execHelper("kustomize", args, {
         cwd: overlay
     })
 }
@@ -52,7 +52,7 @@ const monitorDeployment = async () => {
     const deployments = manifests.filter((x: any) => x.kind === "Deployment" || x.kind === "StatefulSet" || x.kind === "DaemonSet") as any[];
 
     for (const deployment of deployments) {
-        await exec.exec("kubectl", [
+        await execHelper("kubectl", [
             "rollout",
             "status",
             "-n",
@@ -64,4 +64,29 @@ const monitorDeployment = async () => {
     }
 }
 
+
+const execHelper = async (tool, args: string[], options: exec.ExecOptions = {}) => {
+    let stdout = ""
+    let stderr = ""
+
+    const opts = {
+        ...options,
+        listeners: {
+            stdout: (data) => {
+                stdout += data.toString()
+            },
+            stderr: (data) => {
+                stderr += data.toString()
+            }
+        }
+    }
+
+    const exitCode = await exec.exec(tool, args, opts)
+    if (exitCode != 0) {
+        const errMsg = `${tool} exited with code: ${exitCode} \n ${stderr}`
+        throw Error(errMsg)
+    }
+
+    return exitCode
+}
 run().catch(core.setFailed)

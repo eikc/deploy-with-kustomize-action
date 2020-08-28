@@ -2774,7 +2774,7 @@ function run() {
         if (monitoring === "true") {
             yield monitorDeployment();
         }
-        yield exec.exec("kubectl", ["get", "pods", "-n", "mityousee-staging"]);
+        yield execHelper("kubectl", ["get", "pods", "-n", "mityousee-staging"]);
     });
 }
 const setImages = (registry, imageInputs, overlay) => __awaiter(void 0, void 0, void 0, function* () {
@@ -2791,10 +2791,10 @@ const deploy = () => __awaiter(void 0, void 0, void 0, function* () {
     const overlay = core.getInput("overlay");
     const resourceLocation = `${process.cwd()}/resources.yaml`;
     yield runKustomize(overlay, ["-o", resourceLocation, "build"]);
-    yield exec.exec("kubectl", ["apply", "-f", resourceLocation]);
+    yield execHelper("kubectl", ["apply", "-f", resourceLocation]);
 });
 const runKustomize = (overlay, args) => __awaiter(void 0, void 0, void 0, function* () {
-    yield exec.exec("kustomize", args, {
+    yield execHelper("kustomize", args, {
         cwd: overlay
     });
 });
@@ -2804,7 +2804,7 @@ const monitorDeployment = () => __awaiter(void 0, void 0, void 0, function* () {
     const manifests = yaml_1.default.parseAllDocuments(file.toString('utf8'));
     const deployments = manifests.filter((x) => x.kind === "Deployment" || x.kind === "StatefulSet" || x.kind === "DaemonSet");
     for (const deployment of deployments) {
-        yield exec.exec("kubectl", [
+        yield execHelper("kubectl", [
             "rollout",
             "status",
             "-n",
@@ -2814,6 +2814,24 @@ const monitorDeployment = () => __awaiter(void 0, void 0, void 0, function* () {
             `${deployment.kind}/${deployment.metadata.name}`
         ]);
     }
+});
+const execHelper = (tool, args, options = {}) => __awaiter(void 0, void 0, void 0, function* () {
+    let stdout = "";
+    let stderr = "";
+    const opts = Object.assign(Object.assign({}, options), { listeners: {
+            stdout: (data) => {
+                stdout += data.toString();
+            },
+            stderr: (data) => {
+                stderr += data.toString();
+            }
+        } });
+    const exitCode = yield exec.exec(tool, args, opts);
+    if (exitCode != 0) {
+        const errMsg = `${tool} exited with code: ${exitCode} \n ${stderr}`;
+        throw Error(errMsg);
+    }
+    return exitCode;
 });
 run().catch(core.setFailed);
 
