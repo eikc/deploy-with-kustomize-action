@@ -2,12 +2,15 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import YAML from 'yaml';
 import fs from 'fs'
+import {setupKustomize} from './installers'
 
 async function run() {
     const registry = core.getInput("registry", {required: true})
     const imageInputs = core.getInput("images", {required: true})
     const overlay = core.getInput("overlay", {required: true})
     const monitoring = core.getInput("monitoring")
+    
+    await setupKustomize("3.8.0")
 
     await setImages(registry, imageInputs, overlay)
     await deploy()
